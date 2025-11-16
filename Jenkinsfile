@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     environment {
-        AWS_CREDENTIALS = credentials('aws-mugesh-creds')        // FIXED
-        GITHUB_CREDS     = credentials('mugeshcicdtok')           // FIXED
+        AWS_CREDENTIALS = credentials('aws-mugesh-creds')
+        GITHUB_CREDS     = credentials('mugeshcicdtok')
         AWS_REGION       = "ap-south-1"
         ECR_REPO         = "903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp"
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git(
@@ -53,10 +54,16 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sh """
-                ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 "
-                'docker pull ${ECR_REPO}:latest && docker stop app || true && docker rm app || true && docker run -d -p 3000:3000 --name app ${ECR_REPO}:latest'
-                """
+                sshagent(credentials: ['ec2-ssh-key']) {
+                    sh '''
+                    ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 "
+                        sudo docker pull 903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp:latest &&
+                        sudo docker stop mugesh-webapp || true &&
+                        sudo docker rm mugesh-webapp || true &&
+                        sudo docker run -d -p 3000:3000 --name mugesh-webapp 903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp:latest
+                    "
+                    '''
+                }
             }
         }
     }
