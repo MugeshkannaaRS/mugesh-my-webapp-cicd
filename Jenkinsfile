@@ -54,7 +54,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sh """
-                ssh -o StrictHostKeyChecking=no ubuntu@<EC2-PUBLIC-IP> \
+                ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 "
                 'docker pull ${ECR_REPO}:latest && docker stop app || true && docker rm app || true && docker run -d -p 3000:3000 --name app ${ECR_REPO}:latest'
                 """
             }
