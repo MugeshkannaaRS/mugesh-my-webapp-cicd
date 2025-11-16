@@ -1,5 +1,14 @@
 const express = require('express');
 const app = express();
-const port = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Hello from mugesh CI/CD!'));
-app.listen(port, () => console.log(`Server listening on ${port}`));
+
+// Basic route
+app.get('/', (req, res) => {
+    res.send("🚀 Mugesh WebApp is Running Successfully!");
+});
+
+// Server listens on port 3000 (must use 0.0.0.0 for EC2 + Docker)
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+});
