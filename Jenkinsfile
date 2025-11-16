@@ -70,7 +70,7 @@ pipeline {
 
     post {
         failure {
-            echo "Pipeline failed!"
+            echo "❌ Pipeline failed!"
         }
         success {
             echo "🚀 Deployment Successful!"
