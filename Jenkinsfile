@@ -3,13 +3,16 @@ pipeline {
 
     environment {
         AWS_CREDENTIALS = credentials('aws-mugesh-creds')
-        GITHUB_CREDS     = credentials('mugeshcicdtok')
-        AWS_REGION       = "ap-south-1"
-        ECR_REPO         = "903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp"
+        GITHUB_CREDS    = credentials('mugeshcicdtok')
+        AWS_REGION      = "ap-south-1"
+        ECR_REPO        = "903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp"
+    }
+
+    triggers {
+        githubPush()   // Auto deploy when new code pushed to GitHub
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 git(
@@ -54,26 +57,35 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(credentials: ['ec2-ssh-key']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 "
-                        sudo docker pull 903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp:latest &&
+                sshagent(['ubuntu']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 '
+                        sudo docker pull ${ECR_REPO}:latest &&
                         sudo docker stop mugesh-webapp || true &&
                         sudo docker rm mugesh-webapp || true &&
-                        sudo docker run -d -p 3000:3000 --name mugesh-webapp 903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp:latest
-                    "
-                    '''
+                        sudo docker run -d -p 3000:3000 --name mugesh-webapp ${ECR_REPO}:latest
+                    '
+                    """
                 }
             }
         }
     }
 
     post {
-        failure {
-            echo "❌ Pipeline failed!"
-        }
         success {
-            echo "🚀 Deployment Successful!"
+            emailext(
+                subject: "SUCCESS: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}",
+                body: "Deployment Successful!\nCheck Site: http://13.234.117.9:3000",
+                to: "mugeshkannaa7@gmail.com"
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "FAILED: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}",
+                body: "Build Failed! Check console logs:\n${env.BUILD_URL}",
+                to: "mugeshkannaa7@gmail.com"
+            )
         }
     }
 }
