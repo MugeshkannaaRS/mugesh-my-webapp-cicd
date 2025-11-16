@@ -9,16 +9,17 @@ pipeline {
     }
 
     triggers {
-        githubPush()   // Auto deploy when new code pushed to GitHub
+        githubPush()   // Auto trigger when you push to GitHub
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 git(
                     url: 'https://github.com/MugeshkannaaRS/mugesh-my-webapp-cicd.git',
-                    credentialsId: 'mugeshcicdtok',
-                    branch: 'main'
+                    branch: 'main',
+                    credentialsId: 'mugeshcicdtok'
                 )
             }
         }
@@ -57,7 +58,7 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ubuntu']) {
+                sshagent(['ec2-ssh-key']) {   // <-- Correct credential ID
                     sh """
                     ssh -o StrictHostKeyChecking=no ubuntu@13.234.117.9 '
                         sudo docker pull ${ECR_REPO}:latest &&
@@ -73,18 +74,20 @@ pipeline {
 
     post {
         success {
-            emailext(
-                subject: "SUCCESS: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}",
-                body: "Deployment Successful!\nCheck Site: http://13.234.117.9:3000",
-                to: "mugeshkannaa7@gmail.com"
+            echo "🚀 Deployment Successful!"
+            emailext (
+                to: "mugeshkannaa7@gmail.com",
+                subject: "SUCCESS: Mugesh WebApp Deployment",
+                body: "Your CI/CD pipeline has successfully deployed the latest version of the app 🎉"
             )
         }
 
         failure {
-            emailext(
-                subject: "FAILED: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}",
-                body: "Build Failed! Check console logs:\n${env.BUILD_URL}",
-                to: "mugeshkannaa7@gmail.com"
+            echo "❌ Pipeline failed!"
+            emailext (
+                to: "mugeshkannaa7@gmail.com",
+                subject: "FAILED: Mugesh WebApp Deployment",
+                body: "Your CI/CD pipeline FAILED. Please check Jenkins logs."
             )
         }
     }
