@@ -2,19 +2,20 @@ pipeline {
     agent any
 
     environment {
-        AWS_CREDENTIALS = credentials('mk-aws-jenkins-creds')
-        AWS_DEFAULT_REGION = "ap-south-1"
-        ECR_REPO = "903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-mywebapp"
-        IMAGE_TAG = "latest"
+        AWS_CREDENTIALS = credentials('aws-mugesh-creds')        // FIXED
+        GITHUB_CREDS     = credentials('mugeshcicdtok')           // FIXED
+        AWS_REGION       = "ap-south-1"
+        ECR_REPO         = "903743538475.dkr.ecr.ap-south-1.amazonaws.com/mugesh-webapp"
     }
 
     stages {
-
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
+                git(
+                    url: 'https://github.com/MugeshkannaaRS/mugesh-my-webapp-cicd.git',
                     credentialsId: 'mugeshcicdtok',
-                    url: 'https://github.com/MugeshkannaaRS/mugesh-my-webapp-cicd.git'
+                    branch: 'main'
+                )
             }
         }
 
@@ -26,26 +27,26 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh 'npm test || echo "No tests found"'
+                sh 'npm test || true'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 sh """
-                aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
-                docker login --username AWS --password-stdin $ECR_REPO
-
-                docker build -t mugesh-mywebapp .
-                docker tag mugesh-mywebapp:latest $ECR_REPO:$IMAGE_TAG
+                docker build -t mugesh-webapp:latest .
+                docker tag mugesh-webapp:latest ${ECR_REPO}:latest
                 """
             }
         }
 
-        stage('Push Image to ECR') {
+        stage('Login to ECR & Push Image') {
             steps {
                 sh """
-                docker push $ECR_REPO:$IMAGE_TAG
+                aws ecr get-login-password --region ${AWS_REGION} \
+                    | docker login --username AWS --password-stdin 903743538475.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+                docker push ${ECR_REPO}:latest
                 """
             }
         }
@@ -53,24 +54,19 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 sh """
-                CONTAINER_ID=\$(docker ps -q --filter ancestor=$ECR_REPO:$IMAGE_TAG)
-                if [ ! -z "$CONTAINER_ID" ]; then
-                    docker stop \$CONTAINER_ID
-                    docker rm \$CONTAINER_ID
-                fi
-
-                docker run -d -p 80:3000 $ECR_REPO:$IMAGE_TAG
+                ssh -o StrictHostKeyChecking=no ubuntu@<EC2-PUBLIC-IP> \
+                'docker pull ${ECR_REPO}:latest && docker stop app || true && docker rm app || true && docker run -d -p 3000:3000 --name app ${ECR_REPO}:latest'
                 """
             }
         }
     }
 
     post {
-        success {
-            echo "Pipeline executed successfully!"
-        }
         failure {
             echo "Pipeline failed!"
+        }
+        success {
+            echo "🚀 Deployment Successful!"
         }
     }
 }
