@@ -3,7 +3,7 @@ const app = express();
 
 // Basic route
 app.get('/', (req, res) => {
-    res.send(" hi helloooooooooooooooooo Mugesh WebApp Successfully11111111111111111!");
+    res.send(" hi helloooooooooooooooooo !");
 });
 
 // Server listens on port 3000 (must use 0.0.0.0 for EC2 + Docker)
